@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { crearSeleccionFoto } from '../frontend/js/seleccion-foto.js';
+import { crearSeleccionFoto } from '../public/js/seleccion-foto.js';
 
 // Preparación controlada: cada foto queda pendiente hasta que la prueba la resuelve.
 function preparacionManual() {

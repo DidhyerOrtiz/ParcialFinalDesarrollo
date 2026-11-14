@@ -1,7 +1,7 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { resolve } from 'node:path';
 import express from 'express';
 import multer from 'multer';
+import { adminAuth } from './admin-auth.js';
 
 const PHOTO_LIMIT = 700 * 1024;
 const REPORT_ID = /^[A-Za-z0-9]{20}$/;
@@ -51,12 +51,10 @@ function parseCursor(raw) {
   return cursor;
 }
 
-function digest(value) {
-  return createHash('sha256').update(value).digest();
-}
-
-export function createApp({ store, adminKey, frontendDir = resolve('public'), app = express() }) {
-  const expectedKey = digest(adminKey);
+export function createApp({
+  store, adminKey, adminEmail = 'admin@municipal.example', frontendDir = resolve('public'), app = express()
+}) {
+  const auth = adminAuth({ email: adminEmail, password: adminKey });
   app.disable('x-powered-by');
   app.use((_req, res, next) => {
     res.set('X-Content-Type-Options', 'nosniff');
@@ -69,12 +67,31 @@ export function createApp({ store, adminKey, frontendDir = resolve('public'), ap
 
   function requireAdmin(req, res, next) {
     const provided = /^Bearer ([^\s]+)$/i.exec(req.get('authorization') ?? '');
-    if (!provided || !timingSafeEqual(digest(provided[1]), expectedKey)) {
+    if (!provided || !auth.verify(provided[1])) {
       res.set('WWW-Authenticate', 'Bearer');
-      return fail(res, 401, 'CLAVE_INVALIDA', 'La clave de administración es inválida o está ausente.');
+      return fail(res, 401, 'SESION_INVALIDA', 'Inicia sesión para consultar los reportes.');
     }
     next();
   }
+
+  const parseLogin = express.json({ limit: '4kb' });
+  app.post('/api/admin/login', (req, res) => {
+    parseLogin(req, res, error => {
+      if (error?.status === 413) {
+        return fail(res, 413, 'SOLICITUD_GRANDE', 'La solicitud supera el tamaño permitido.');
+      }
+      const { correo, contrasena } = req.body ?? {};
+      if (error || typeof correo !== 'string' || typeof contrasena !== 'string' ||
+          correo.length > 254 || contrasena.length > 512) {
+        return fail(res, 400, 'LOGIN_INVALIDO', 'Envía un correo y una contraseña válidos.');
+      }
+      const token = auth.login({ correo, contrasena });
+      if (!token) {
+        return fail(res, 401, 'CREDENCIALES_INVALIDAS', 'El correo o la contraseña son incorrectos.');
+      }
+      return res.json({ token });
+    });
+  });
 
   app.post('/api/reportes', (req, res, next) => {
     if (!req.is('multipart/form-data')) {

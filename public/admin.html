@@ -30,7 +30,7 @@
     <!-- Acceso -->
     <section id="seccion-acceso" class="panel acceso" aria-labelledby="titulo-acceso">
       <h1 id="titulo-acceso">Acceso municipal</h1>
-      <p class="intro">Ingresa la clave de administración para consultar los reportes ciudadanos.</p>
+      <p class="intro">Ingresa tu correo y contraseña para consultar los reportes ciudadanos.</p>
 
       <div id="acceso-error" class="aviso aviso--error" role="alert" hidden>
         <p id="acceso-error-texto"></p>
@@ -38,8 +38,15 @@
 
       <form id="formulario-acceso" novalidate>
         <div class="campo">
-          <label class="campo__etiqueta" for="clave">Clave de acceso</label>
-          <input id="clave" name="clave" type="password" class="entrada" required
+          <label class="campo__etiqueta" for="correo">Correo electrónico</label>
+          <input id="correo" name="correo" type="email" class="entrada" required maxlength="254"
+            autocomplete="username" autocapitalize="off" spellcheck="false"
+            aria-describedby="correo-error">
+          <span id="correo-error" class="campo__error"></span>
+        </div>
+        <div class="campo">
+          <label class="campo__etiqueta" for="clave">Contraseña</label>
+          <input id="clave" name="clave" type="password" class="entrada" required maxlength="512"
             autocomplete="current-password" autocapitalize="off" spellcheck="false"
             aria-describedby="clave-error">
           <span id="clave-error" class="campo__error"></span>

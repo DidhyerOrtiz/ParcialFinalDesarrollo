@@ -1,10 +1,12 @@
-import { listarReportes, obtenerFoto, formatearFecha } from '/js/api.js';
+import { iniciarSesion, listarReportes, obtenerFoto, formatearFecha } from '/js/api.js';
 
 const $ = id => document.getElementById(id);
 
 const seccionAcceso = $('seccion-acceso');
 const seccionReportes = $('seccion-reportes');
 const formularioAcceso = $('formulario-acceso');
+const entradaCorreo = $('correo');
+const correoError = $('correo-error');
 const entradaClave = $('clave');
 const claveError = $('clave-error');
 const accesoError = $('acceso-error');
@@ -23,8 +25,8 @@ const botonMas = $('cargar-mas');
 const masError = $('mas-error');
 const plantilla = $('plantilla-reporte');
 
-// La clave solo vive en memoria durante la sesión de esta pestaña.
-let clave = null;
+// El token de sesión solo vive en memoria.
+let token = null;
 let siguienteCursor = null;
 let totalMostrados = 0;
 let generacion = 0;             // Invalida respuestas de cargas anteriores
@@ -79,7 +81,7 @@ function actualizarResumen() {
 function cerrarSesion(mensaje = '') {
   generacion++;
   controladorCarga?.abort();
-  clave = null;
+  token = null;
   vaciarLista();
   mostrarSolo(null);
   seccionReportes.hidden = true;
@@ -90,22 +92,31 @@ function cerrarSesion(mensaje = '') {
     accesoErrorTexto.textContent = mensaje;
     accesoError.hidden = false;
   }
-  entradaClave.focus();
+  entradaCorreo.focus();
 }
 
 async function alIngresar(evento) {
   evento.preventDefault();
   if (botonIngresar.disabled) return;
   accesoError.hidden = true;
-  const valor = entradaClave.value.trim();
+  const correo = entradaCorreo.value.trim();
+  if (!correo || !entradaCorreo.validity.valid) {
+    correoError.textContent = 'Escribe un correo válido.';
+    entradaCorreo.setAttribute('aria-invalid', 'true');
+    entradaCorreo.focus();
+    return;
+  }
+  correoError.textContent = '';
+  entradaCorreo.removeAttribute('aria-invalid');
+  const valor = entradaClave.value;
   if (!valor) {
-    claveError.textContent = 'Escribe la clave de acceso.';
+    claveError.textContent = 'Escribe la contraseña.';
     entradaClave.setAttribute('aria-invalid', 'true');
     entradaClave.focus();
     return;
   }
   if (/\s/.test(valor)) {
-    claveError.textContent = 'La clave no debe contener espacios.';
+    claveError.textContent = 'La contraseña no debe contener espacios.';
     entradaClave.setAttribute('aria-invalid', 'true');
     entradaClave.focus();
     return;
@@ -115,9 +126,10 @@ async function alIngresar(evento) {
 
   ponerOcupado(botonIngresar, $('ingresar-girador'), $('ingresar-texto'), true, 'Verificando…', 'Ingresar');
   try {
-    const datos = await listarReportes(valor);
-    clave = valor;
+    const sesion = await iniciarSesion(correo, valor);
     entradaClave.value = '';
+    const datos = await listarReportes(sesion);
+    token = sesion;
     seccionAcceso.hidden = true;
     seccionReportes.hidden = false;
     botonSalir.hidden = false;
@@ -127,7 +139,7 @@ async function alIngresar(evento) {
     $('titulo-reportes').focus();
   } catch (error) {
     accesoErrorTexto.textContent = error.estado === 401
-      ? 'La clave de acceso es incorrecta.'
+      ? 'El correo o la contraseña son incorrectos.'
       : error.message;
     accesoError.hidden = false;
     entradaClave.select();
@@ -139,7 +151,7 @@ async function alIngresar(evento) {
 /* ---------- Listado ---------- */
 
 async function cargarDesdeInicio() {
-  if (!clave) return;
+  if (!token) return;
   const miGeneracion = ++generacion;
   controladorCarga?.abort();
   controladorCarga = new AbortController();
@@ -148,12 +160,12 @@ async function cargarDesdeInicio() {
   botonActualizar.disabled = true;
 
   try {
-    const datos = await listarReportes(clave, { signal: controladorCarga.signal });
+    const datos = await listarReportes(token, { signal: controladorCarga.signal });
     if (miGeneracion !== generacion) return;
     pintarPagina(datos);
   } catch (error) {
     if (miGeneracion !== generacion || error.name === 'AbortError') return;
-    if (error.estado === 401) return cerrarSesion('La sesión ya no es válida. Ingresa la clave de nuevo.');
+    if (error.estado === 401) return cerrarSesion('La sesión ya no es válida. Vuelve a iniciar sesión.');
     estadoErrorTexto.textContent = error.message;
     mostrarSolo('error');
   } finally {
@@ -162,7 +174,7 @@ async function cargarDesdeInicio() {
 }
 
 async function cargarMas() {
-  if (!clave || !siguienteCursor || botonMas.disabled) return;
+  if (!token || !siguienteCursor || botonMas.disabled) return;
   const miGeneracion = generacion;
   masError.textContent = '';
   ponerOcupado(botonMas, $('cargar-mas-girador'), $('cargar-mas-texto'), true, 'Cargando…', 'Cargar más reportes');
@@ -170,14 +182,14 @@ async function cargarMas() {
   const primerNuevo = totalMostrados;
 
   try {
-    const datos = await listarReportes(clave, { cursor: siguienteCursor, signal: controladorCarga.signal });
+    const datos = await listarReportes(token, { cursor: siguienteCursor, signal: controladorCarga.signal });
     if (miGeneracion !== generacion) return;
     pintarPagina(datos);
     // Lleva el foco al primer reporte nuevo para que el teclado continúe desde ahí.
     lista.children[primerNuevo]?.querySelector('button')?.focus();
   } catch (error) {
     if (miGeneracion !== generacion || error.name === 'AbortError') return;
-    if (error.estado === 401) return cerrarSesion('La sesión ya no es válida. Ingresa la clave de nuevo.');
+    if (error.estado === 401) return cerrarSesion('La sesión ya no es válida. Vuelve a iniciar sesión.');
     masError.textContent = error.message;
   } finally {
     ponerOcupado(botonMas, $('cargar-mas-girador'), $('cargar-mas-texto'), false, '', 'Cargar más reportes');
@@ -247,7 +259,7 @@ async function alternarFoto(reporte, nodo) {
     cerrarFoto(id, nodo);
     return;
   }
-  if (controladoresFoto.has(id) || !clave) return;
+  if (controladoresFoto.has(id) || !token) return;
 
   errorFoto.hidden = true;
   const controlador = new AbortController();
@@ -258,7 +270,7 @@ async function alternarFoto(reporte, nodo) {
   texto.textContent = 'Cargando fotografía…';
 
   try {
-    const blob = await obtenerFoto(clave, reporte.fotoUrl, { signal: controlador.signal });
+    const blob = await obtenerFoto(token, reporte.fotoUrl, { signal: controlador.signal });
     if (controlador.signal.aborted) return;
     const url = URL.createObjectURL(blob);
     urlsFotos.set(id, url);
@@ -273,7 +285,7 @@ async function alternarFoto(reporte, nodo) {
     texto.textContent = 'Ocultar fotografía';
   } catch (error) {
     if (error.name === 'AbortError') return;
-    if (error.estado === 401) return cerrarSesion('La sesión ya no es válida. Ingresa la clave de nuevo.');
+    if (error.estado === 401) return cerrarSesion('La sesión ya no es válida. Vuelve a iniciar sesión.');
     errorFoto.textContent = error.estado === 404
       ? 'No se encontró la fotografía de este reporte.'
       : error.message;
@@ -290,6 +302,10 @@ async function alternarFoto(reporte, nodo) {
 /* ---------- Eventos ---------- */
 
 formularioAcceso.addEventListener('submit', alIngresar);
+entradaCorreo.addEventListener('input', () => {
+  correoError.textContent = '';
+  entradaCorreo.removeAttribute('aria-invalid');
+});
 entradaClave.addEventListener('input', () => {
   if (entradaClave.getAttribute('aria-invalid') === 'true') {
     claveError.textContent = '';
@@ -304,4 +320,4 @@ window.addEventListener('pagehide', evento => {
   if (!evento.persisted) liberarFotos();
 });
 
-entradaClave.focus();
+entradaCorreo.focus();

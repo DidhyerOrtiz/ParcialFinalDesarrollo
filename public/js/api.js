@@ -7,7 +7,7 @@ export const DESCRIPCION_MAX = 2000;
 
 const MENSAJES_HTTP = {
   400: 'Revisa los datos del formulario e intenta de nuevo.',
-  401: 'La clave de acceso es inválida o está ausente.',
+  401: 'Inicia sesión para consultar los reportes.',
   404: 'No se encontró el recurso solicitado.',
   413: 'La fotografía o la solicitud es demasiado grande.',
   415: 'El formato de la imagen no es admitido.',
@@ -48,8 +48,8 @@ async function solicitar(url, opciones = {}) {
   return respuesta;
 }
 
-function autorizacion(clave) {
-  return { Authorization: 'Bearer ' + clave };
+function autorizacion(token) {
+  return { Authorization: 'Bearer ' + token };
 }
 
 export async function registrarReporte(descripcion, foto, { signal } = {}) {
@@ -61,22 +61,32 @@ export async function registrarReporte(descripcion, foto, { signal } = {}) {
   return cuerpo.reporte;
 }
 
-export async function listarReportes(clave, { cursor = null, limite = 20, signal } = {}) {
+export async function iniciarSesion(correo, contrasena) {
+  const respuesta = await solicitar('/api/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ correo, contrasena })
+  });
+  const { token } = await respuesta.json();
+  return token;
+}
+
+export async function listarReportes(token, { cursor = null, limite = 20, signal } = {}) {
   const parametros = new URLSearchParams({ limite: String(limite) });
   if (cursor) parametros.set('cursor', cursor);
   const respuesta = await solicitar('/api/reportes?' + parametros, {
-    headers: autorizacion(clave),
+    headers: autorizacion(token),
     signal
   });
   return respuesta.json();
 }
 
-export async function obtenerFoto(clave, fotoUrl, { signal } = {}) {
-  // Solo se aceptan rutas de la propia API para no enviar la clave a otro origen.
+export async function obtenerFoto(token, fotoUrl, { signal } = {}) {
+  // Solo se aceptan rutas de la propia API para no enviar el token a otro origen.
   if (typeof fotoUrl !== 'string' || !fotoUrl.startsWith('/api/reportes/')) {
     throw new ErrorApi(0, 'URL_INVALIDA', 'La dirección de la fotografía no es válida.');
   }
-  const respuesta = await solicitar(fotoUrl, { headers: autorizacion(clave), signal });
+  const respuesta = await solicitar(fotoUrl, { headers: autorizacion(token), signal });
   return respuesta.blob();
 }
 

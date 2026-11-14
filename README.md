@@ -25,6 +25,27 @@ Agrega estas variables al entorno **Production** de Vercel:
 |---|---|
 | `FIREBASE_PROJECT_ID` | ID del proyecto de Firebase |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Contenido completo del JSON de la cuenta de servicio. Configúralo como variable sensible. |
+| `ADMIN_EMAIL` | Correo del usuario municipal. El valor predeterminado es `admin@municipal.example`. |
 | `ADMIN_KEY` | Clave larga y aleatoria sin espacios para ingresar al panel municipal. Configúrala como variable sensible. |
 
 Con la URL de producción, registra un reporte en `/`, verifica el folio y busca ese mismo folio y su foto en `/admin`.
+
+## Prueba para el evaluador
+
+1. Abre el [portal publicado](https://parcial-final-desarrollo.vercel.app/) y registra un reporte con descripción y fotografía.
+2. Copia el folio que aparece en la confirmación.
+3. Entra al [panel municipal](https://parcial-final-desarrollo.vercel.app/admin) con el correo `admin@municipal.example` y la contraseña de evaluación compartida por Canvas.
+4. Localiza el mismo folio y verifica que el panel muestre la descripción original y permita abrir la fotografía.
+
+### Credenciales de prueba locales
+
+Con el emulador de Firestore en ejecución, configura estos valores en tu archivo `.env`:
+
+```dotenv
+FIREBASE_PROJECT_ID=demo-portal-municipal
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+ADMIN_EMAIL=admin@municipal.example
+ADMIN_KEY=MunicipalDemo-2026-Local
+```
+
+Ejecuta `npm ci` y `npm start`. En [el panel local](http://localhost:3000/admin) usa el correo y la contraseña del bloque anterior. Estas credenciales corresponden al entorno local.

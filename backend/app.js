@@ -55,8 +55,7 @@ function digest(value) {
   return createHash('sha256').update(value).digest();
 }
 
-export function createApp({ store, adminKey, frontendDir = resolve('frontend') }) {
-  const app = express();
+export function createApp({ store, adminKey, frontendDir = resolve('public'), app = express() }) {
   const expectedKey = digest(adminKey);
   app.disable('x-powered-by');
   app.use((_req, res, next) => {

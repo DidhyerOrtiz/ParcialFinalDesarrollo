@@ -2,7 +2,7 @@
 
 ## Encargo para Claude
 
-Implementa el frontend del portal municipal en `feat/frontend` y abre un PR a `main`. Trabaja dentro de `frontend/` con HTML, CSS y JavaScript nativo. La API correrá en el mismo origen y servirá esa carpeta. Entradas: `frontend/index.html` para `/` y `frontend/admin.html` para `/admin`. Usa rutas absolutas para recursos y llamadas REST con `fetch`.
+Implementa el frontend del portal municipal en `feat/frontend` y abre un PR a `develop`. Trabaja dentro de `frontend/` con HTML, CSS y JavaScript nativo. La API correrá en el mismo origen y servirá esa carpeta. Entradas: `frontend/index.html` para `/` y `frontend/admin.html` para `/admin`. Usa rutas absolutas para recursos y llamadas REST con `fetch`.
 
 | Elemento | Color |
 |---|---|
@@ -59,6 +59,10 @@ Envía el mismo encabezado de autorización. Devuelve la fotografía binaria con
 | 413 | Fotografía o solicitud demasiado grande |
 | 415 | Formato de solicitud o imagen no admitido |
 | 503 | Almacenamiento temporalmente no disponible |
+
+## Integración
+
+Los PR de `feat/frontend` y `feat/backend` apuntan a `develop`. Una vez integrada y verificada la aplicación, abre el PR de `develop` a `main`.
 
 ## Verificación conjunta
 

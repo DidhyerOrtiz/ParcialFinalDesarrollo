@@ -1,0 +1,17 @@
+{
+  "name": "portal-municipal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env backend/server.js"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "firebase-admin": "^14.5.1",
+    "multer": "^2.5.0"
+  }
+}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1C1D20">
+  <meta name="robots" content="noindex">
+  <title>Panel municipal · Atención ciudadana</title>
+  <link rel="icon" href="/img/icono.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/estilos.css">
+  <script type="module" src="/js/admin.js"></script>
+</head>
+<body>
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+
+  <header class="encabezado">
+    <div class="encabezado__contenido">
+      <a class="marca" href="/admin">
+        <span class="marca__icono" aria-hidden="true">M</span>
+        <span class="marca__texto">
+          <span class="marca__nombre">Panel municipal</span>
+          <span class="marca__sub">Reportes ciudadanos</span>
+        </span>
+      </a>
+      <button type="button" id="salir" class="boton boton--secundario boton--pequeno" hidden>Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main id="contenido" class="principal" tabindex="-1">
+    <!-- Acceso -->
+    <section id="seccion-acceso" class="panel acceso" aria-labelledby="titulo-acceso">
+      <h1 id="titulo-acceso">Acceso municipal</h1>
+      <p class="intro">Ingresa la clave de administración para consultar los reportes ciudadanos.</p>
+
+      <div id="acceso-error" class="aviso aviso--error" role="alert" hidden>
+        <p id="acceso-error-texto"></p>
+      </div>
+
+      <form id="formulario-acceso" novalidate>
+        <div class="campo">
+          <label class="campo__etiqueta" for="clave">Clave de acceso</label>
+          <input id="clave" name="clave" type="password" class="entrada" required
+            autocomplete="current-password" autocapitalize="off" spellcheck="false"
+            aria-describedby="clave-error">
+          <span id="clave-error" class="campo__error"></span>
+        </div>
+        <button type="submit" id="ingresar" class="boton boton--primario boton--ancho">
+          <span id="ingresar-girador" class="girador" aria-hidden="true" hidden></span>
+          <span id="ingresar-texto">Ingresar</span>
+        </button>
+      </form>
+    </section>
+
+    <!-- Reportes -->
+    <section id="seccion-reportes" class="panel" aria-labelledby="titulo-reportes" hidden>
+      <div class="barra">
+        <h1 id="titulo-reportes" tabindex="-1">Reportes recibidos</h1>
+        <button type="button" id="actualizar" class="boton boton--secundario boton--pequeno">Actualizar</button>
+      </div>
+
+      <div id="estado-cargando" class="estado" role="status" hidden>
+        <div class="girador" aria-hidden="true"></div>
+        <p>Cargando reportes…</p>
+      </div>
+
+      <div id="estado-vacio" class="estado" hidden>
+        <p>Todavía no hay reportes registrados.</p>
+      </div>
+
+      <div id="estado-error" class="estado estado--error" role="alert" hidden>
+        <p id="estado-error-texto"></p>
+        <button type="button" id="reintentar" class="boton boton--primario">Reintentar</button>
+      </div>
+
+      <p id="resumen" class="resumen" aria-live="polite"></p>
+      <ol id="lista-reportes" class="lista-reportes" aria-labelledby="titulo-reportes"></ol>
+
+      <div id="mas" class="mas" hidden>
+        <button type="button" id="cargar-mas" class="boton boton--secundario">
+          <span id="cargar-mas-girador" class="girador" aria-hidden="true" hidden></span>
+          <span id="cargar-mas-texto">Cargar más reportes</span>
+        </button>
+        <p id="mas-error" class="reporte__foto-error" role="alert"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <div class="pie__contenido">
+      Portal municipal de atención ciudadana · <a href="/">Portal público</a>
+    </div>
+  </footer>
+
+  <template id="plantilla-reporte">
+    <li class="reporte">
+      <article>
+        <div class="reporte__cabecera">
+          <span>Folio <span class="reporte__folio" data-campo="folio"></span></span>
+          <time data-campo="fecha"></time>
+        </div>
+        <p class="reporte__descripcion" data-campo="descripcion"></p>
+        <div class="acciones">
+          <button type="button" class="boton boton--primario boton--pequeno" data-accion="foto" aria-expanded="false">
+            <span class="girador" aria-hidden="true" hidden></span>
+            <span data-campo="texto-foto">Ver fotografía</span>
+          </button>
+        </div>
+        <div class="reporte__foto" data-campo="contenedor-foto" hidden></div>
+        <p class="reporte__foto-error" data-campo="error-foto" role="alert" hidden></p>
+      </article>
+    </li>
+  </template>
+</body>
+</html>

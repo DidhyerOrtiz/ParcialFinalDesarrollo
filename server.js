@@ -4,7 +4,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { createApp } from './backend/app.js';
 import { firestoreReportStore } from './backend/report-store.js';
 
-const { FIREBASE_PROJECT_ID, FIRESTORE_EMULATOR_HOST, FIREBASE_SERVICE_ACCOUNT_JSON, ADMIN_KEY } = process.env;
+const { FIREBASE_PROJECT_ID, FIRESTORE_EMULATOR_HOST, FIREBASE_SERVICE_ACCOUNT_JSON, ADMIN_KEY, ADMIN_EMAIL = 'admin@municipal.example' } = process.env;
 if (!FIREBASE_PROJECT_ID?.trim() || !ADMIN_KEY || /\s/.test(ADMIN_KEY)) {
   throw new Error('Configura FIREBASE_PROJECT_ID y ADMIN_KEY sin espacios.');
 }
@@ -29,4 +29,4 @@ if (!FIRESTORE_EMULATOR_HOST) {
 
 const firebase = initializeApp(options);
 const store = firestoreReportStore(getFirestore(firebase));
-export default createApp({ app: express(), store, adminKey: ADMIN_KEY });
+export default createApp({ app: express(), store, adminKey: ADMIN_KEY, adminEmail: ADMIN_EMAIL.trim().toLowerCase() });

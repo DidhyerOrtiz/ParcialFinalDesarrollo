@@ -7,6 +7,7 @@ import {
   DESCRIPCION_MIN,
   DESCRIPCION_MAX
 } from '/js/api.js';
+import { crearSeleccionFoto } from '/js/seleccion-foto.js';
 
 const CLAVE_BORRADOR = 'portal-municipal:borrador';
 const TIEMPO_MAXIMO_ENVIO = 60000;
@@ -34,9 +35,7 @@ const avisoErrorTexto = $('aviso-error-texto');
 const seccionFormulario = $('seccion-formulario');
 const seccionConfirmacion = $('seccion-confirmacion');
 
-let fotoLista = null;        // File listo para enviar (original u optimizado)
 let urlVistaPrevia = null;   // Object URL de la vista previa
-let procesandoFoto = 0;      // Identificador de la última selección en proceso
 let enviando = false;
 
 /* ---------- Borrador ---------- */
@@ -85,9 +84,11 @@ function validarDescripcion() {
 }
 
 function validarFoto() {
+  const { fase, error } = seleccion.estado;
   let mensaje = '';
-  if (procesandoFoto && !fotoLista) mensaje = 'Espera a que termine de prepararse la fotografía.';
-  else if (!fotoLista) mensaje = fotoError.dataset.mensaje || 'Adjunta una fotografía del problema.';
+  if (fase === 'preparando') mensaje = 'Espera a que termine de prepararse la fotografía.';
+  else if (fase === 'error') mensaje = error.message;
+  else if (fase !== 'lista') mensaje = 'Adjunta una fotografía del problema.';
   mostrarErrorCampo(entradaFoto, fotoError, mensaje);
   selectorFoto.dataset.invalido = mensaje ? 'true' : 'false';
   return !mensaje;
@@ -179,14 +180,6 @@ function liberarVistaPrevia() {
   vistaPrevia.hidden = true;
 }
 
-function limpiarFoto() {
-  procesandoFoto = 0;
-  fotoLista = null;
-  delete fotoError.dataset.mensaje;
-  entradaFoto.value = '';
-  liberarVistaPrevia();
-}
-
 function mostrarVistaPrevia(archivo, original) {
   liberarVistaPrevia();
   urlVistaPrevia = URL.createObjectURL(archivo);
@@ -198,48 +191,42 @@ function mostrarVistaPrevia(archivo, original) {
   vistaPrevia.hidden = false;
 }
 
-async function alSeleccionarFoto() {
-  const archivo = entradaFoto.files?.[0];
-  fotoLista = null;
-  delete fotoError.dataset.mensaje;
-  liberarVistaPrevia();
-  if (!archivo) {
-    procesandoFoto = 0;
-    return;
+// Devuelve el archivo que se enviará: el original si ya cumple, o una versión JPEG reducida.
+async function prepararFoto(original) {
+  if (original.type && !original.type.startsWith('image/')) {
+    throw new Error('El archivo seleccionado no es una imagen. Usa JPEG, PNG o WebP.');
   }
-
-  const turno = ++procesandoFoto;
-  mostrarErrorCampo(entradaFoto, fotoError, '');
-  selectorFoto.dataset.invalido = 'false';
-
-  if (!archivo.type.startsWith('image/') && archivo.type !== '') {
-    procesandoFoto = 0;
-    fotoError.dataset.mensaje = 'El archivo seleccionado no es una imagen. Usa JPEG, PNG o WebP.';
-    validarFoto();
-    return;
-  }
-
+  if (TIPOS_FOTO.includes(original.type) && original.size <= LIMITE_FOTO) return original;
   try {
-    let preparada = archivo;
-    if (!TIPOS_FOTO.includes(archivo.type) || archivo.size > LIMITE_FOTO) {
-      fotoError.textContent = '';
-      vistaPreviaMeta.textContent = '';
-      estadoEnvio.textContent = 'Preparando la fotografía…';
-      preparada = await optimizarFoto(archivo);
-    }
-    if (turno !== procesandoFoto) return; // El usuario eligió otra foto mientras tanto.
-    procesandoFoto = 0;
-    fotoLista = preparada;
-    mostrarVistaPrevia(preparada, archivo);
-    estadoEnvio.textContent = 'Fotografía lista.';
-    validarFoto();
+    return await optimizarFoto(original);
   } catch {
-    if (turno !== procesandoFoto) return;
-    procesandoFoto = 0;
-    fotoError.dataset.mensaje = 'No pudimos leer esta imagen. Usa una fotografía JPEG, PNG o WebP.';
-    estadoEnvio.textContent = '';
-    validarFoto();
+    throw new Error('No pudimos leer esta imagen. Usa una fotografía JPEG, PNG o WebP.');
   }
+}
+
+function alCambiarFoto({ fase, original, archivo, error }) {
+  liberarVistaPrevia();
+  if (fase === 'lista') {
+    mostrarVistaPrevia(archivo, original);
+    estadoEnvio.textContent = 'Fotografía lista.';
+    mostrarErrorCampo(entradaFoto, fotoError, '');
+    selectorFoto.dataset.invalido = 'false';
+  } else if (fase === 'error') {
+    estadoEnvio.textContent = '';
+    mostrarErrorCampo(entradaFoto, fotoError, error.message);
+    selectorFoto.dataset.invalido = 'true';
+  } else {
+    estadoEnvio.textContent = fase === 'preparando' ? 'Preparando la fotografía…' : '';
+    mostrarErrorCampo(entradaFoto, fotoError, '');
+    selectorFoto.dataset.invalido = 'false';
+  }
+}
+
+const seleccion = crearSeleccionFoto({ preparar: prepararFoto, alCambiar: alCambiarFoto });
+
+function limpiarFoto() {
+  entradaFoto.value = '';
+  seleccion.limpiar();
 }
 
 /* ---------- Envío ---------- */
@@ -255,15 +242,17 @@ function mostrarAviso(mensaje) {
   avisoError.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
-function ponerEnviando(activo) {
+// Mientras se espera la foto, el selector sigue disponible: si el usuario elige
+// otra, el envío espera a esa nueva selección.
+function ponerEnviando(activo, { texto = 'Enviando reporte…', bloquearFoto = true } = {}) {
   enviando = activo;
   botonEnviar.disabled = activo;
   botonEnviar.setAttribute('aria-busy', String(activo));
   enviarGirador.hidden = !activo;
-  enviarTexto.textContent = activo ? 'Enviando reporte…' : 'Enviar reporte';
+  enviarTexto.textContent = activo ? texto : 'Enviar reporte';
   descripcion.readOnly = activo;
-  entradaFoto.disabled = activo;
-  quitarFoto.disabled = activo;
+  entradaFoto.disabled = activo && bloquearFoto;
+  quitarFoto.disabled = activo && bloquearFoto;
 }
 
 async function alEnviar(evento) {
@@ -271,12 +260,22 @@ async function alEnviar(evento) {
   if (enviando) return;
   ocultarAviso();
 
-  const descripcionValida = validarDescripcion();
-  const fotoValida = validarFoto();
-  if (!descripcionValida || !fotoValida) {
-    (descripcionValida ? entradaFoto : descripcion).focus();
+  if (!validarDescripcion()) {
+    if (seleccion.estado.fase !== 'preparando') validarFoto();
+    descripcion.focus();
     return;
   }
+
+  if (seleccion.estado.fase === 'preparando') {
+    ponerEnviando(true, { texto: 'Preparando la fotografía…', bloquearFoto: false });
+    await seleccion.esperar();
+    ponerEnviando(false);
+  }
+  if (!validarFoto()) {
+    entradaFoto.focus();
+    return;
+  }
+  const foto = seleccion.estado.archivo;
 
   guardarBorrador();
   ponerEnviando(true);
@@ -285,7 +284,7 @@ async function alEnviar(evento) {
   const temporizador = setTimeout(() => controlador.abort(), TIEMPO_MAXIMO_ENVIO);
 
   try {
-    const reporte = await registrarReporte(descripcion.value.trim(), fotoLista, { signal: controlador.signal });
+    const reporte = await registrarReporte(descripcion.value.trim(), foto, { signal: controlador.signal });
     mostrarConfirmacion(reporte);
   } catch (error) {
     const mensaje = error.name === 'AbortError'
@@ -350,7 +349,7 @@ descripcion.addEventListener('input', () => {
 descripcion.addEventListener('blur', () => {
   if (descripcion.value.trim()) validarDescripcion();
 });
-entradaFoto.addEventListener('change', alSeleccionarFoto);
+entradaFoto.addEventListener('change', () => seleccion.seleccionar(entradaFoto.files?.[0] ?? null));
 quitarFoto.addEventListener('click', () => {
   limpiarFoto();
   estadoEnvio.textContent = 'Fotografía quitada.';

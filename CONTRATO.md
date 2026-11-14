@@ -2,7 +2,7 @@
 
 ## Encargo para Claude
 
-Implementa el frontend del portal municipal en `feat/frontend` y abre un PR a `develop`. Trabaja dentro de `frontend/` con HTML, CSS y JavaScript nativo. La API correrá en el mismo origen y servirá esa carpeta. Entradas: `frontend/index.html` para `/` y `frontend/admin.html` para `/admin`. Usa rutas absolutas para recursos y llamadas REST con `fetch`.
+Implementa el frontend del portal municipal en `feat/frontend` y abre un PR a `develop`. Trabaja dentro de `public/` con HTML, CSS y JavaScript nativo. La API correrá en el mismo origen y servirá esa carpeta. Entradas: `public/index.html` para `/` y `public/admin.html` para `/admin`. Usa rutas absolutas para recursos y llamadas REST con `fetch`.
 
 | Elemento | Color |
 |---|---|
